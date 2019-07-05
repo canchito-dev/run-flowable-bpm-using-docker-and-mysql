@@ -28,7 +28,7 @@ By default, Flowable engine uses an in-memory database to store execution and hi
 
 Go to `root folder`, and modify the _pom.xml_ file as shown below. Basically, we are modifying the H2 dependency’s scope from runtime to test, and the MySQL dependency’s scope from test to runtime.
 
-<pre class="EnlighterJSRAW" data-enlighter-language="xml"><dependencies>
+```xml
   <dependency>
     <groupId>com.h2database</groupId>
     <artifactId>h2</artifactId>
@@ -42,11 +42,13 @@ Go to `root folder`, and modify the _pom.xml_ file as shown below. Basically, we
     <version>5.1.27</version>
     <scope>runtime</scope>
   </dependency>
-</dependencies></pre>
+</dependencies>
+```
 
 Next, you will have to modify individual _pom.xml_ file for each Flowable’s apps. Look for the docker image build and push section. As you will notice, by default, it uses Postgre database and driver. Modify it to use MySQL’s, just as in the below snipped.
 
-<pre class="EnlighterJSRAW" data-enlighter-language="xml"><!-- docker image build and push -->
+```xml
+<!-- docker image build and push -->
 <profile>
   <id>docker</id>
   <dependencies>
@@ -62,17 +64,20 @@ Next, you will have to modify individual _pom.xml_ file for each Flowable’s ap
       …
     <plugins>
   <build>
-<profile></pre>
+<profile>
+```
 
 You will have to do this for the _pom.xml_ found under:
 
-<pre class="EnlighterJSRAW" data-enlighter-language="null">Root
+```
+Root
   |- modules
     |- flowable-app-rest
     |- flowable-ui-admin-app
     |- flowable-ui-idm-app
     |- flowable-ui-modeler-app
-    |- flowable-app-rest</pre>
+    |- flowable-app-rest
+```
 
 That’s it. Now you are ready to build Flowable’s images.
 
@@ -81,7 +86,8 @@ Until now, we have only prepared Flowable to include MySQL’s dependency. It is
 
 To do so, the Flowable Team was kind enough to create some scripts that do this for us. Under the `root folder`, you will see a `docker directory`. Inside you will see a script called `build-all-images.sh`. I recommend you to edit it, and include the skip test. Otherwise it takes too long to build and create the images. In the end, the script should look something like this:
 
-<pre class="EnlighterJSRAW" data-enlighter-language="shell">#!/bin/bash
+```
+#!/bin/bash
 echo "Building all Java artifacts"
 cd ..
 mvn -Pdistro clean install -DskipTests
@@ -106,7 +112,8 @@ echo "Building TASK app image"
 cd ../flowable-ui-task
 mvn -Pdocker clean package -DskipTests
 
-echo "Done..."</pre>
+echo "Done..."
+```
 
 If you want, you could add the `-U`, to force all the dependencies to be updated.
 
@@ -114,17 +121,20 @@ If you want, you could add the `-U`, to force all the dependencies to be updated
 
 By now, you should be able to see all of Flowable’s application images in your repository. Let’s list them.
 
-<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ docker image ls
+```
+$ docker image ls
 REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
 flowable/flowable-task      latest              08a369ab9e95        45 hours ago        179MB
 flowable/flowable-modeler   latest              c87376d3b49f        45 hours ago        169MB
 flowable/flowable-idm       latest              ba444b20d379        45 hours ago        162MB
 flowable/flowable-admin     latest              eb1f12567a13        46 hours ago        170MB
-flowable/flowable-rest      latest              9f81bec4177a        46 hours ago        170MB</pre>
+flowable/flowable-rest      latest              9f81bec4177a        46 hours ago        170MB
+```
 
 As mentioned in the before, we will use Docker Compose for defining and running a multi-container Docker applications. Here is the `docker-compose.yml` file that we will use.
 
-<pre class="EnlighterJSRAW" data-enlighter-language="generic">version: '3.7'
+```
+version: '3.7'
 services:
 
     flowable-db:
@@ -270,13 +280,14 @@ services:
         entrypoint: ["./wait-for-something.sh", "flowable-db", "3306", "MySQL", "java", "-jar", "app.war"]
 
 volumes:
-    db_data: {}</pre>
-
+    db_data: {}
+```
 In the file, we specify container for MySQL, and the Flowables apps. Notice that we have included [adminer](https://www.adminer.org/en/) database manager, so that we can access the database from a web interface.
 
 One very important thing to notice, is that each container has an entry point, which executes a script called `wait-for-something.sh` (thanks to Flowable’s team). The script simple waits until the database is up, before starting Flowable’s app. Here is a copy of the script:
 
-<pre class="EnlighterJSRAW" data-enlighter-language="shell">#!/bin/ash
+```
+#!/bin/ash
 set -e
 
 host="$1"
@@ -291,18 +302,20 @@ until nc -z "$host" "$port"; do
 done
 
 >&2 echo "$description is up - executing command"
-exec $cmd</pre>
-
+exec $cmd
+```
 Finally, we are ready to start Flowable. Execute the following command in the same directory where you created the `docker-compose.yml` file and `wait-for-something.sh` script:
 
-<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ docker-compose up -d
+```
+$ docker-compose up -d
 Starting flowable_adminer_1           ... done
 Starting flowable-mysql-5.7.26        ... done
 Starting flowable-idm                 ... done
 Starting flowable_flowable-rest-app_1 ... done
 Starting flowable-task                ... done
 Starting flowable-admin               ... done
-Starting flowable-modeler             ... done</pre>
+Starting flowable-modeler             ... done
+```
 
 Congratulations, you have successfully built and deployed Flowable’s app with MySQL.
 
